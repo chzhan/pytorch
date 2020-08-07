@@ -62,8 +62,7 @@ class IDEEPOperator : public OperatorBase {
       StopAllObservers();
       return result;
     } catch (EnforceNotMet& err) {
-      err.AppendMessage(getErrorMsg());
-      throw;
+      TORCH_RETHROW(err, getErrorMsg());
     } catch (ideep::error& e) {
       LOG(ERROR) << "IDEEP error:" << e.message;
       throw;
@@ -131,5 +130,21 @@ inline ideep::scale_t ConvertScales(
   return scales;
 }
 
+inline ideep::tensor::dims CanonicalDims(
+    ideep::tensor::dims adims, int32_t axis) {
+  CAFFE_ENFORCE(axis < (int32_t)adims.size(), "Invalid axis!");
+  CAFFE_ENFORCE(axis > (int32_t)-adims.size(), "Invalid axis!");
+  if (adims.size() == 2 || axis == 1)
+    return adims;
+  if (axis < 0) {
+    axis += (int32_t)adims.size();
+  }
+
+  auto dim0 = std::accumulate(adims.begin(), adims.begin() + axis, 1,
+                              std::multiplies<ideep::tensor::dim_t>());
+  auto dim1 = std::accumulate(adims.begin() + axis, adims.end(), 1,
+                              std::multiplies<ideep::tensor::dim_t>());
+  return ideep::tensor::dims({dim0, dim1});
+}
 
 } // namespace caffe2
